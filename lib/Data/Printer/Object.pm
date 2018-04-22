@@ -19,12 +19,12 @@ package # hide from pause
     sub new {
         my ($class, $params) = @_;
         my $self = {
-            'linear_isa' => Data::Printer::Common::_fetch_scalar_or_default($params, 'linear_isa', 'auto'),
-            'show_reftype' => Data::Printer::Common::_fetch_scalar_or_default($params, 'show_reftype', 0),
+            'linear_isa'     => Data::Printer::Common::_fetch_scalar_or_default($params, 'linear_isa', 'auto'),
+            'show_reftype'   => Data::Printer::Common::_fetch_scalar_or_default($params, 'show_reftype', 0),
             'show_overloads' => Data::Printer::Common::_fetch_scalar_or_default($params, 'show_overloads', 1),
-            'stringify' => Data::Printer::Common::_fetch_scalar_or_default($params, 'stringify', 1),
-            'expand' => Data::Printer::Common::_fetch_scalar_or_default($params, 'expand', 1),
-            'show_methods' => Data::Printer::Common::_fetch_anyof(
+            'stringify'      => Data::Printer::Common::_fetch_scalar_or_default($params, 'stringify', 1),
+            'expand'         => Data::Printer::Common::_fetch_scalar_or_default($params, 'expand', 1),
+            'show_methods'   => Data::Printer::Common::_fetch_anyof(
                 $params, 'show_methods', 'all', [qw(none all private public)]
             ),
             'inherited' => Data::Printer::Common::_fetch_anyof(
@@ -33,10 +33,10 @@ package # hide from pause
             'format_inheritance' => Data::Printer::Common::_fetch_anyof(
                 $params, 'format_inheritance', 'string', [qw(string lines)]
             ),
-            'universal' => Data::Printer::Common::_fetch_scalar_or_default($params, 'universal', 1),
+            'universal'    => Data::Printer::Common::_fetch_scalar_or_default($params, 'universal', 1),
             'sort_methods' => Data::Printer::Common::_fetch_scalar_or_default($params, 'sort_methods', 1),
-            'internals' => Data::Printer::Common::_fetch_scalar_or_default($params, 'internals', 1),
-            'parents' => Data::Printer::Common::_fetch_scalar_or_default($params, 'parents', 1),
+            'internals'    => Data::Printer::Common::_fetch_scalar_or_default($params, 'internals', 1),
+            'parents'      => Data::Printer::Common::_fetch_scalar_or_default($params, 'parents', 1),
         };
         return bless $self, $class;
     }
@@ -56,55 +56,31 @@ use Data::Printer::Filter::Regexp;
 use Data::Printer::Filter::CODE;
 use Data::Printer::Filter::GenericClass;
 
-my $_has_devel_refcount;
+# create our basic accessors:
+foreach my $method_name (qw(
+    name show_tainted show_unicode show_readonly show_lvalue show_refcount
+    show_memsize memsize_unit print_escapes scalar_quotes escape_chars
+    caller_info caller_message string_max string_overflow string_preserve
+    array_max array_overflow array_preserve hash_max hash_overflow
+    hash_preserve ignore_keys unicode_charnames colored theme show_weak
+    max_depth index separator end_separator class_method class hash_separator
+    align_hash sort_keys quote_keys deparse return_value
+)) {
+    no strict 'refs';
+    *{__PACKAGE__ . "::$method_name"} = sub {
+        $_[0]->{$method_name} = $_[1] if @_ > 1;
+        return $_[0]->{$method_name};
+    }
+}
 
-sub name               { $_[0]->{'name'}               }
-sub show_tainted       { $_[0]->{'show_tainted'}       }
-sub show_unicode       { $_[0]->{'show_unicode'}       }
-sub show_readonly      { $_[0]->{'show_readonly'}      }
-sub show_lvalue        { $_[0]->{'show_lvalue'}        }
-sub show_refcount      { $_[0]->{'show_refcount'}      }
-sub show_memsize       { $_[0]->{'show_memsize'}       }
-sub memsize_unit       { $_[0]->{'memsize_unit'}       }
-sub print_escapes      { $_[0]->{'print_escapes'}      }
-sub scalar_quotes      { $_[0]->{'scalar_quotes'}      }
-sub escape_chars       { $_[0]->{'escape_chars'}       }
-sub caller_info        { $_[0]->{'caller_info'}        }
-sub caller_message     { $_[0]->{'caller_message'}     }
-sub string_max         { $_[0]->{'string_max'}         }
-sub string_overflow    { $_[0]->{'string_overflow'}    }
-sub string_preserve    { $_[0]->{'string_preserve'}    }
-sub array_max          { $_[0]->{'array_max'}          }
-sub array_overflow     { $_[0]->{'array_overflow'}     }
-sub array_preserve     { $_[0]->{'array_preserve'}     }
-sub hash_max           { $_[0]->{'hash_max'}           }
-sub hash_overflow      { $_[0]->{'hash_overflow'}      }
-sub hash_preserve      { $_[0]->{'hash_preserve'}      }
-sub ignore_keys        { $_[0]->{'ignore_keys'}        }
-sub unicode_charnames  { $_[0]->{'unicode_charnames'}  }
-sub colored            { $_[0]->{'colored'}            }
-sub theme              { $_[0]->{'theme'}              }
-sub show_weak          { $_[0]->{'show_weak'}          }
-sub max_depth          { $_[0]->{'max_depth'}          }
-sub index              { $_[0]->{'index'}              }
-sub separator          { $_[0]->{'separator'}          }
-sub end_separator      { $_[0]->{'end_separator'}      }
-sub current_depth      { $_[0]->{'_depth'}             }
-sub class_method       { $_[0]->{'class_method'}       }
-sub class              { $_[0]->{'class'}              }
-sub hash_separator     { $_[0]->{'hash_separator'}     }
-sub multiline          { $_[0]->{'multiline'}          }
-sub align_hash         { $_[0]->{'align_hash'}         }
-sub sort_keys          { $_[0]->{'sort_keys'}          }
-sub quote_keys         { $_[0]->{'quote_keys'}         }
-sub deparse            { $_[0]->{'deparse'}            }
+sub current_depth { $_[0]->{_depth}   }
+sub indent        { $_[0]->{_depth}++ }
+sub outdent       { $_[0]->{_depth}-- }
 
-sub indent  { $_[0]->{_depth}++ }
-sub outdent { $_[0]->{_depth}-- }
 sub newline {
     my ($self) = @_;
     return $self->{_linebreak}
-         . (' ' x ($self->{_depth} * $self->{indent}))
+         . (' ' x ($self->{_depth} * $self->{_current_indent}))
          . (' ' x $self->{_array_padding})
          ;
 }
@@ -120,100 +96,106 @@ sub current_name {
     return $self->{_current_name};
 }
 
-sub new {
-    my $class = shift;
+sub _init {
+    my $self = shift;
     my $props = { @_ == 1 ? %{$_[0]} : @_ };
 
-    my $self = {
-        '_linebreak'    => "\n",
-        '_depth'         => 0,
-        '_array_padding' => 0,
-        '_seen'          => {},
-        'indent'        => Data::Printer::Common::_fetch_scalar_or_default($props, 'indent', 4),
-        'index'        => Data::Printer::Common::_fetch_scalar_or_default($props, 'index', 1),
-        'name'           => Data::Printer::Common::_fetch_scalar_or_default($props, 'name', 'var'),
-        'show_tainted'   => Data::Printer::Common::_fetch_scalar_or_default($props, 'show_tainted', 1),
-        'show_weak'      => Data::Printer::Common::_fetch_scalar_or_default($props, 'show_weak', 1),
-        'show_unicode'   => Data::Printer::Common::_fetch_scalar_or_default($props, 'show_unicode', 0),
-        'show_readonly'  => Data::Printer::Common::_fetch_scalar_or_default($props, 'show_readonly', 0),
-        'show_lvalue'    => Data::Printer::Common::_fetch_scalar_or_default($props, 'show_lvalue', 1),
-        'show_refcount'    => Data::Printer::Common::_fetch_scalar_or_default($props, 'show_refcount', 0),
-        'show_memsize'    => Data::Printer::Common::_fetch_scalar_or_default($props, 'show_memsize', 0),
-        'memsize_unit'   => Data::Printer::Common::_fetch_anyof(
+    $self->{'_linebreak'} = "\n";
+    $self->{'_depth'} = 0;
+    $self->{'_position'} = 0; # depth is for indentation only!
+    $self->{'_array_padding'} = 0;
+    $self->{'_seen'} = {};
+    $self->{_refcount_base} = 3;
+    $self->{'indent'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'indent', 4);
+    $self->{'index'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'index', 1);
+    $self->{'name'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'name', 'var');
+    $self->{'show_tainted'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'show_tainted', 1);
+    $self->{'show_weak'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'show_weak', 1);
+    $self->{'show_unicode'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'show_unicode', 0);
+    $self->{'show_readonly'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'show_readonly', 1);
+    $self->{'show_lvalue'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'show_lvalue', 1);
+    $self->{'show_refcount'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'show_refcount', 0);
+    $self->{'show_memsize'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'show_memsize', 0);
+    $self->{'memsize_unit'} = Data::Printer::Common::_fetch_anyof(
                                 $props,
                                 'memsize_unit',
                                 'auto',
                                 [qw(auto b k m)]
-                            ),
-        'print_escapes'  => Data::Printer::Common::_fetch_scalar_or_default($props, 'print_escapes', 0),
-        'scalar_quotes'  => Data::Printer::Common::_fetch_scalar_or_default($props, 'scalar_quotes', q(")),
-        'escape_chars'   => Data::Printer::Common::_fetch_anyof(
+                            );
+    $self->{'print_escapes'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'print_escapes', 0);
+    $self->{'scalar_quotes'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'scalar_quotes', q("));
+    $self->{'escape_chars'} = Data::Printer::Common::_fetch_anyof(
+                            $props,
+                            'escape_chars',
+                            'none',
+                            [qw(none nonascii nonlatin1 all)]
+                        );
+    $self->{'caller_info'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'caller_info', 0);
+    $self->{'caller_message'} = Data::Printer::Common::_fetch_scalar_or_default(
+                            $props,
+                            'caller_message',
+                            'Printing in line __LINE__ of __FILENAME__:'
+                        );
+    $self->{'string_max'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'string_max', 1024);
+    $self->{'string_preserve'} = Data::Printer::Common::_fetch_anyof(
+                             $props,
+                             'string_preserve',
+                             'begin',
+                             [qw(begin end middle extremes none)]
+                         );
+    $self->{'string_overflow'} = Data::Printer::Common::_fetch_scalar_or_default(
                                 $props,
-                                'escape_chars',
-                                'none',
-                                [qw(none nonascii nonlatin1 all)]
-                            ),
-        'caller_info'    => Data::Printer::Common::_fetch_scalar_or_default($props, 'caller_info', 0),
-        'caller_message' => Data::Printer::Common::_fetch_scalar_or_default(
+                                'string_overflow',
+                                '(...skipping __SKIPPED__ chars...)'
+                            );
+    $self->{'array_max'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'array_max', 50);
+    $self->{'array_preserve'} = Data::Printer::Common::_fetch_anyof(
+                             $props,
+                             'array_preserve',
+                             'begin',
+                             [qw(begin end middle extremes none)]
+                         );
+    $self->{'array_overflow'} = Data::Printer::Common::_fetch_scalar_or_default(
                                 $props,
-                                'caller_message',
-                                'Printing in line __LINE__ of __FILENAME__:'
-                            ),
-        'string_max'      => Data::Printer::Common::_fetch_scalar_or_default($props, 'string_max', 0),
-        'string_preserve' => Data::Printer::Common::_fetch_anyof(
-                                 $props,
-                                 'string_preserve',
-                                 'begin',
-                                 [qw(begin end middle extremes none)]
-                             ),
-        'string_overflow' => Data::Printer::Common::_fetch_scalar_or_default(
-                                    $props,
-                                    'string_overflow',
-                                    '(...skipping __SKIPPED__ chars...)'
-                                ),
-        'array_max'      => Data::Printer::Common::_fetch_scalar_or_default($props, 'array_max', 0),
-        'array_preserve' => Data::Printer::Common::_fetch_anyof(
-                                 $props,
-                                 'array_preserve',
-                                 'begin',
-                                 [qw(begin end middle extremes none)]
-                             ),
-        'array_overflow' => Data::Printer::Common::_fetch_scalar_or_default(
-                                    $props,
-                                    'array_overflow',
-                                    '(...skipping __SKIPPED__ items...)'
-                            ),
-        'hash_max'      => Data::Printer::Common::_fetch_scalar_or_default($props, 'hash_max', 0),
-        'hash_preserve' => Data::Printer::Common::_fetch_anyof(
-                                 $props,
-                                 'hash_preserve',
-                                 'begin',
-                                 [qw(begin end middle extremes none)]
-                           ),
-        'hash_overflow' => Data::Printer::Common::_fetch_scalar_or_default(
-                                    $props,
-                                    'hash_overflow',
-                                    '(...skipping __SKIPPED__ keys...)'
-                           ),
-        'ignore_keys' => Data::Printer::Common::_fetch_arrayref_of_scalars($props, 'ignore_keys'),
-        'unicode_charnames' => Data::Printer::Common::_fetch_scalar_or_default(
-                                   $props,
-                                   'unicode_charnames',
-                                   0
-                               ),
-        'colored' => Data::Printer::Common::_fetch_scalar_or_default($props, 'colored', 'auto'),
-        'max_depth' => Data::Printer::Common::_fetch_scalar_or_default($props, 'max_depth', 0),
-        'separator' => Data::Printer::Common::_fetch_scalar_or_default($props, 'separator', ','),
-        'end_separator' => Data::Printer::Common::_fetch_scalar_or_default($props, 'end_separator', 0),
-        'class_method' => Data::Printer::Common::_fetch_scalar_or_default($props, 'class_method', '_data_printer'),
-        'class' => Data::Printer::Object::ClassOptions->new($props->{'class'}),
-        'hash_separator' => Data::Printer::Common::_fetch_scalar_or_default($props, 'hash_separator', '   '),
-        'multiline' => Data::Printer::Common::_fetch_scalar_or_default($props, 'multiline', 1),
-        'align_hash' => Data::Printer::Common::_fetch_scalar_or_default($props, 'align_hash', 1),
-        'sort_keys' => Data::Printer::Common::_fetch_scalar_or_default($props, 'sort_keys', 1),
-        'quote_keys' => Data::Printer::Common::_fetch_scalar_or_default($props, 'quote_keys', 'auto'),
-        'deparse' => Data::Printer::Common::_fetch_scalar_or_default($props, 'deparse', 0),
-    };
+                                'array_overflow',
+                                '(...skipping __SKIPPED__ items...)'
+                        );
+    $self->{'hash_max'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'hash_max', 50);
+    $self->{'hash_preserve'} = Data::Printer::Common::_fetch_anyof(
+                             $props,
+                             'hash_preserve',
+                             'begin',
+                             [qw(begin end middle extremes none)]
+                       );
+    $self->{'hash_overflow'} = Data::Printer::Common::_fetch_scalar_or_default(
+                                $props,
+                                'hash_overflow',
+                                '(...skipping __SKIPPED__ keys...)'
+                       );
+    $self->{'ignore_keys'} = Data::Printer::Common::_fetch_arrayref_of_scalars($props, 'ignore_keys');
+    $self->{'unicode_charnames'} = Data::Printer::Common::_fetch_scalar_or_default(
+                               $props,
+                               'unicode_charnames',
+                               0
+                           );
+    $self->{'colored'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'colored', 'auto');
+    $self->{'max_depth'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'max_depth', 0);
+    $self->{'separator'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'separator', ',');
+    $self->{'end_separator'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'end_separator', 0);
+    $self->{'class_method'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'class_method', '_data_printer');
+    $self->{'class'} = Data::Printer::Object::ClassOptions->new($props->{'class'});
+    $self->{'hash_separator'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'hash_separator', '   ');
+    $self->{'align_hash'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'align_hash', 1);
+    $self->{'sort_keys'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'sort_keys', 1);
+    $self->{'quote_keys'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'quote_keys', 'auto');
+    $self->{'deparse'} = Data::Printer::Common::_fetch_scalar_or_default($props, 'deparse', 0);
+    $self->{'return_value'} = Data::Printer::Common::_fetch_anyof(
+                             $props,
+                             'return_value',
+                             'pass',
+                             [qw(pass dump void)]
+                       );
+
 
     if (exists $props->{as}) {
         my $msg = Data::Printer::Common::_fetch_scalar_or_default($props, 'as', '');
@@ -221,12 +203,86 @@ sub new {
         $self->{caller_message} = $msg;
     }
 
-    bless $self, $class;
+    $self->multiline(
+        Data::Printer::Common::_fetch_scalar_or_default($props, 'multiline', 1)
+    );
 
     $self->_load_colors($props);
     $self->_load_filters($props);
+    $self->output($props->{output} || 'stderr');
 
     return $self;
+}
+
+sub output {
+    my ($self, $new_output) = @_;
+    if (@_ > 1) {
+        $self->_load_output_handle($new_output);
+    }
+    return $self->{output};
+}
+
+# output_handle() is handle only
+sub output_handle { $_[0]->{output_handle} }
+
+sub _load_output_handle {
+    my ($self, $output) = @_;
+    my %targets = ( stdout => *STDOUT, stderr => *STDERR );
+    my $error;
+    my $ref = ref $output;
+    if (!$ref and exists $targets{ lc $output }) {
+        $self->{output} = lc $output;
+        $self->{output_handle} = $targets{ $self->{output} };
+    }
+    elsif ( ( $ref and $ref eq 'GLOB')
+         or (!$ref and \$output =~ /GLOB\([^()]+\)$/)
+    ) {
+        $self->{output} = 'handle';
+        $self->{output_handle} = $output;
+    }
+    elsif (!$ref or $ref eq 'SCALAR') {
+        if (open my $fh, '>>', $output) {
+            $self->{output} = 'file';
+            $self->{output_handle} = $fh;
+        }
+        else {
+            $error = "file '$output': $!";
+        }
+    }
+    else {
+        $error = 'unknown output data';
+    }
+    if ($error) {
+        Data::Printer::Common::_warn("error opening custom output handle: $error");
+        $self->{output_handle} = $targets{'stderr'}
+    }
+    return;
+}
+
+sub new {
+    my $class = shift;
+    my $self = bless {}, $class;
+    return $self->_init(@_);
+}
+
+sub multiline {
+    my ($self, $value) = @_;
+    if (defined $value) {
+        $self->{multiline} = !!$value;
+        if ($value) {
+            $self->{_linebreak} = "\n";
+            $self->{_current_indent} = $self->{indent};
+            $self->index( $self->{_original_index} )
+                if exists $self->{_original_index};
+        }
+        else {
+            $self->{_original_index} = $self->index;
+            $self->{_linebreak} = ' ';
+            $self->{_current_indent} = 0;
+            $self->index(0);
+        }
+    }
+    return $self->{multiline};
 }
 
 sub _load_filters {
@@ -291,7 +347,7 @@ sub _detect_color_level {
     return $color_level;
 }
 
-
+sub color_level { $_[0]->{_output_color_level} }
 
 sub _load_colors {
     my ($self, $props) = @_;
@@ -309,9 +365,6 @@ sub _load_colors {
         Data::Printer::Common::_die("Unable to load default theme. This should never happen - please contact the author") unless $theme_object;
     }
     $self->{theme} = $theme_object;
-}
-
-sub merge_properties {
 }
 
 sub _filters_for_type {
@@ -355,53 +408,53 @@ sub _filters_for_data {
     return @potential_filters;
 }
 
-# _see($data): if data was never seen before, we "see" it but return undef.
-# otherwise, we return its stringified position ("var", "var{foo}[7]", etc)
-# unless $options{seen_override} is passed. Why seen_override? Sometimes we
-# want to print the same data twice, like the GenericClass filter, which
-# prints the object's metadata via parse() and then the internal structure
-# via parse_as(). But if we simply do that, we'd get the "seen" version
-# (because we have already visited it!)
+# _see($data): marks data as seen if it was never seen it before.
+# if we are showing refcounts, we return those. Initially we had
+# this funcionallity separated, but refcounts increase as we find
+# them again and because of that we were seeing weird refcounting.
+# So now instead we store the refcount of the variable when we
+# first saw it.
+# Finally, if we have already seen the data, we return its stringified
+# position, like "var", "var{foo}[7]", etc. UNLESS $options{seen_override}
+# is set. Why seen_override? Sometimes we want to print the same data
+# twice, like the GenericClass filter, which prints the object's metadata
+# via parse() and then the internal structure via parse_as(). But if we
+# simply do that, we'd get the "seen" version (because we have already
+# visited it!) The refcount is still calculated only once though :)
 sub _see {
     my ($self, $data, %options) = @_;
     return {} unless ref $data;
 
     my $id = Data::Printer::Common::_object_id($data);
     if (!exists $self->{_seen}{$id}) {
-        $self->{_seen}{$id} = { name => $self->current_name, refcount => _ez_refcnt($data) };
+        $self->{_seen}{$id} = {
+            name     => $self->current_name,
+            refcount => ($self->show_refcount ? $self->_refcount($data) : 0),
+        };
         return { refcount => $self->{_seen}{$id}->{refcount} };
     }
     return { refcount => $self->{_seen}{$id}->{refcount} } if $options{seen_override};
     return $self->{_seen}{$id};
 }
 
-sub _ez_refcnt {
-    my ( $data ) = @_;
-    
-    #use B qw(SVf_ROK);
+sub _refcount {
+    my ($self, $data) = @_;
+
     require B;
-    
-    # some SV's are special (represented by B::SPECIAL)
-    # and don't have a ->REFCNT (e.g. \undef)
     my $count;
-
-
-    # my $count = B::svref_2object(\$data)->RV->REFCNT;
-    # #warn "--- $data";
-    # if ( ref($data) eq 'REF' && ref($$data)) {
-    #     $count = B::svref_2object($data)->RV->REFCNT;
-    # }
-
     my $rv = B::svref_2object(\$data)->RV;
-    if ( ref($data) eq 'REF' && ref($$data)) {
+    if (ref($data) eq 'REF' && ref($$data)) {
         $rv = B::svref_2object($data)->RV;
     }
 
-    #return 0 if $rv->isa('B::SPECIAL');
+    # some SV's are special (represented by B::SPECIAL)
+    # and don't have a ->REFCNT (e.g. \undef)
     return 0 unless $rv->can( 'REFCNT' );
-    return $rv->REFCNT - 3;
-}
 
+    # 3 is our magical number: so we return the actual reference count
+    # minus the references we added as we were traversing:
+    return $rv->REFCNT - $self->{_refcount_base};
+}
 
 sub parse_as {
     my ($self, $type, $data) = @_;
@@ -413,21 +466,11 @@ sub parse_as {
 # is a weak ref or not.
 sub parse {
     my $self = shift;
+    $self->{_position}++;
 
     my $str_weak = $self->_check_weak( $_[0] );
 
-    #warn "$str_weak ---\n";
-
     my ($data, %options) = @_;
-    #my $refcount = $self->_check_refcount($data);
-    # make sure we don't influence refcount
-#    Scalar::Util::weaken($data) if ref $data;
-
-    #warn "--  $data";
-
-    # $options{force_type} = 'SCALAR'
-    #     unless ref $data && !exists $options{force_type};
-
     my $parsed_string = '';
 
     # if we've seen this structure before, we return its location
@@ -439,17 +482,10 @@ sub parse {
         # is whether this reference is weak or not:
         $parsed_string .= $self->maybe_colorize($name, 'repeated');
         $parsed_string .= $str_weak;
-        #$parsed_string .= "XXX";
-        # if ($self->show_refcount) {
-        #     $parsed_string .=  $self->_check_refcount($data);
-        # }
-
-        #my $after = $self->_check_refcount($data);
-        return $parsed_string;# . "(had refcount of $refcount, after: $after)";
+        $self->{_position}--;
+        return $parsed_string;
     }
 
-
-    #warn "\nrefcount Before for " . $self->current_name . ": $refcount";
     # Each filter type provides an array of potential parsers.
     # Once we find the right kind, we go through all of them,
     # from most precise match to most generic.
@@ -460,14 +496,11 @@ sub parse {
           ? $self->_filters_for_type($options{force_type})
           : $self->_filters_for_data($data)
     ) {
-
-
         if (defined (my $result = $filter->($data, $self))) {
             $parsed_string .= $result;
             last;
         }
     }
-
 
     $parsed_string .= $self->_check_readonly($data);
     $parsed_string .= $str_weak;
@@ -475,90 +508,17 @@ sub parse {
     $parsed_string .= $self->_check_memsize($data);
     if ($self->show_refcount && ref($data) ne 'SCALAR' && $seen->{refcount} > 1 ) {
         $parsed_string .= ' (refcount: ' . $seen->{refcount} .')';
-        # $self->_check_refcount($data, $options{extra_ref});
     }
 
-
-#warn $parsed_string;
-#use Devel::Peek; Dump( $data );
- 
-
+    $self->{_position}--;
     return $parsed_string;
-    # FIXME: write_label should be public and not part of
-    # parse(), which should do only 1 thing: parse.
-    # return $self->_write_label . $parsed_string;
-    # $self->{_seen} = {}; # cleanup auxiliary data after full parse.
-    # ^^^ also only once per run
 }
-
-sub _check_refcount {
-    my ($self, $data, $extra_ref) = @_;
-return;
-    return '' unless ref $data;
-
-    if (!defined $_has_devel_refcount) {
-        my $error = Data::Printer::Common::_tryme(sub {
-            require Devel::Refcount; 1;
-        });
-        $_has_devel_refcount = $error ? 0 : 1;
-    }
-
-    my $count;
-
-        use B qw(SVf_ROK);
-        # some SV's are special (represented by B::SPECIAL)
-        # and don't have a ->REFCNT (e.g. \undef)
-        #eval 
-        {
-#            $count = B::svref_2object(
-#                \$data
-                #(ref $data eq 'REF' || ref $data eq 'SCALAR') ? $$data : $data
-#            )->RV->REFCNT
-            
-#     warn "EXTRA $extra_ref . ". ref($data). " -> ". eval { ref($$data) } . "\n";
-# warn "="x10;
-# use Devel::Peek; Dump $data;
-        my $rv;
-
-            if ( $extra_ref && $extra_ref == 1 && ref($data) && ref($$data)) {
-                $rv = B::svref_2object($data)->RV;
-                $count = $rv->REFCNT;
-                ##warn "EXTRA $extra_ref . ". ref($data). " -> ". eval { ref($$data) } . " --- REFCNT $count\n";
-                #use Devel::Peek; Dump $data;
-                #$count += 3 if ref $$data ne 'REF';
-
-            } else {
-                $rv = B::svref_2object(\$data)->RV;    
-                $count = $rv->REFCNT;    
-            }
-            
-            # if ( ref $data ne 'REF' && ($rv->FLAGS & SVf_ROK) == SVf_ROK) {
-                
-            #     $count = $rv->RV->REFCNT + 3;
-            # }
-            # else {
-            #     $count = $rv->REFCNT;
-            # }
-            # .... 3 
-
-
-        } ;
-
-    # refcount is always 2 more than what the users have on their code,
-    # because refcounting increases as we reference it in our own subs:
-#    warn $self->current_name . ' is refcount ' . $count . "\n";
-    #use Carp;
-    #warn Carp::confess;
-    return '' unless $count && $count > 4;
-    return $self->maybe_colorize(" (refcount: " . ($count - 3) . ")", 'refcount');
-}
-
 
 sub _check_memsize {
     my ($self, $data) = @_;
     return '' unless $self->show_memsize
                   && (   $self->show_memsize eq 'all'
-                      || $self->show_memsize > $self->current_depth);
+                      || $self->show_memsize >= $self->{_position});
     my $size;
     my $unit;
     my $error = Data::Printer::Common::_tryme(sub {
@@ -580,7 +540,7 @@ sub _check_memsize {
     if ($error) {
         if ($error =~ m{locate Devel/Size.pm}) {
             Data::Printer::Common::_warn("Devel::Size not found, show_memsize will be ignored")
-                if $self->current_depth == 0;
+                if $self->{_position} == 1;
         }
         else {
             Data::Printer::Common::_warn("error fetching memory usage: $error");
@@ -608,7 +568,7 @@ sub _check_weak {
     return ' ' . $self->maybe_colorize('(weak)', 'weak');
 }
 
-sub _write_label {
+sub write_label {
     my ($self) = @_;
     return '' unless $self->caller_info;
     my @caller = caller 2;
@@ -625,7 +585,7 @@ sub _write_label {
 sub maybe_colorize {
     my ($self, $output, $color_type, $end_color) = @_;
 
-    if ($self->{_output_color_level}) {
+    if ($self->color_level) {
         $output = $self->theme->sgr_color_for($color_type)
              . $output
              . (defined $end_color
@@ -638,12 +598,10 @@ sub maybe_colorize {
 
 
 sub _check_readonly {
-    my ($self, $var) = @_;
-    return ' (read-only)' if $self->show_readonly && &Internals::SvREADONLY(\$var);
+    my ($self) = @_;
+    return ' (read-only)' if $self->show_readonly && &Internals::SvREADONLY($_[1]);
     return '';
 }
-
-
 
 42;
 __END__

@@ -8,10 +8,11 @@ sub colors {
     my %code_for = (
         'very_light_gray' =>  '#EEFFFF',
         'light_gray'      =>  '#B2CCD6',
+        'middle_gray'     =>  '#808080',
         'gray'            =>  '#373b41',
         'dark_gray'       =>  '#282a2e',
         'very_dark_gray'  =>  '#263238',
-        'green'           =>  '#C3E88D',
+        'green'           =>  '#90B55A', #'#C3E88D',
         'teal'            =>  '#009688',
         'light_teal'      =>  '#73d1c8',
         'cyan'            =>  '#89DDF3',

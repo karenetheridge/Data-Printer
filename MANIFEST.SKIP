@@ -1,6 +1,6 @@
 ^\.git
 ^[^/]+\.pl$
-^\ignore.txt
+^ignore.txt
 ^_build
 ^Build$
 ^blib
@@ -19,3 +19,5 @@ cover_db
 ^\._.*$
 ^MYMETA.yml$
 ^MYMETA\.json$
+\-old
+\-original

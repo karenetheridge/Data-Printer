@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 sub colors {
+    {};
 }
 
 1;

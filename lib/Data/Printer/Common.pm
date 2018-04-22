@@ -8,6 +8,37 @@ use if $] <  5.010, 'Hash::Util::FieldHash::Compat' => qw(fieldhash);
 my $mro_initialized = 0;
 my $nsort_initialized;
 
+sub merge_options {
+    my ($old, $new) = @_;
+    if (ref $new eq 'HASH') {
+        my %merged;
+        my $to_merge = ref $old eq 'HASH' ? $old : {};
+        foreach my $k (keys %$new, keys %$to_merge) {
+            # if the key exists in $new, we recurse into it:
+            if (exists $new->{$k}) {
+                $merged{$k} = merge_options($to_merge->{$k}, $new->{$k});
+            }
+            else {
+                # otherwise we keep the old version (recursing in case of refs)
+                $merged{$k} = merge_options(undef, $to_merge->{$k});
+            }
+        }
+        return \%merged;
+    }
+    elsif (ref $new eq 'ARRAY') {
+        # we'll only use the array on $new, but we still need to recurse
+        # in case array elements contain other data structures.
+        my @merged;
+        foreach my $element (@$new) {
+            push @merged, merge_options(undef, $element);
+        }
+        return \@merged;
+    }
+    else {
+        return $new;
+    }
+}
+
 # strings are tough to process: there are control characters like "\t",
 # unicode characters to name or escape (or do nothing), max_string to
 # worry about, and every single piece of that could have its own color.
@@ -30,6 +61,12 @@ sub _process_string {
 
     # finally, send our wrapped string:
     return $ddp->maybe_colorize($string, $src_name);
+}
+
+sub _colorstrip {
+    my ($string) = @_;
+    $string =~ s{ \e\[ [\d;]* m }{}xmsg;
+    return $string;
 }
 
 sub _reduce_string {
@@ -188,6 +225,7 @@ sub _nsort_pp {
     my $i;
     my @unsorted = map lc, @_;
     foreach my $data (@unsorted) {
+        no warnings 'uninitialized';
         $data =~ s/((\.0*)?)(\d+)/("\x0" x length $2) . (pack 'aNa*', 0, length $3, $3)/eg;
         $data .= ' ' . $i++;
     }
@@ -246,30 +284,6 @@ sub _fetch_scalar_or_default {
         _die("'$name' property must be a scalar, not a reference to $ref");
     }
     return $props->{$name};
-}
-
-sub _die_unless_non_negative {
-    my ($name, $props) = @_;
-    my $is_non_negative;
-    if (exists $props->{$name}) {
-        my $maybe_number = $props->{$name};
-        $is_non_negative =
-            defined $maybe_number
-            && !ref $maybe_number
-            && $maybe_number =~ /\A\d+\z/
-            && $maybe_number >= 0
-            ;
-        return $maybe_number if $is_non_negative;
-    }
-    _die(
-          "'$name' property must be a non negative number "
-        . "(got " . (
-            exists $props->{$name}
-            ? (defined $props->{$name} ? qq('$props->{$name}') : 'undef')
-            : "no key at all"
-           )
-        . ")"
-    );
 }
 
 sub _die {
@@ -439,18 +453,15 @@ sub _fetch_indexes_for {
     }
 }
 
-# All glory to Vincent Pit for coming up with this implementation,
-# to Goro Fuji for Hash::FieldHash, and Michael Schwern for "Object::ID"
-# whose code is copied almost verbatim below.
 {
-    fieldhash my %IDs;
+#    fieldhash my %IDs;
+    my %IDs;
 
     my $Last_ID = "a";
     sub _object_id {
         my ($self) = @_;
 
-
-        #$self = Scalar::Util::refaddr( $self ); # maybe not required - use 
+        $self = Scalar::Util::refaddr( $self ); # maybe not required - use 
 
         # This is 15% faster than ||=
         return $IDs{$self} if exists $IDs{$self};

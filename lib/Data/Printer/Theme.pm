@@ -45,7 +45,7 @@ sub _maybe_override_theme_colors {
         }
     });
     if ($error) {
-        _warn("error overriding color: $error. Skipping!");
+        Data::Printer::Common::_warn("error overriding color: $error. Skipping!");
     }
     return;
 }
@@ -56,7 +56,7 @@ sub _load_theme {
     my $class = 'Data::Printer::Theme::' . $theme_name;
     my $error = Data::Printer::Common::_tryme("use $class; 1;");
     if ($error) {
-        _warn("error loading theme '$theme_name': $error.");
+        Data::Printer::Common::_warn("error loading theme '$theme_name': $error.");
         return { colors => {}, sgr_colors => {} };
     }
     my $loaded_colors     = {};
@@ -76,7 +76,7 @@ sub _load_theme {
         }
     });
     if ($error) {
-        _warn("Error loading theme '$theme_name': $error. Output will have no colors");
+        Data::Printer::Common::_warn("Error loading theme '$theme_name': $error. Output will have no colors");
         return { colors => {}, sgr_colors => {} };
     }
     return {
@@ -97,7 +97,7 @@ sub _parse_color {
             $color_code = "\e[0;38;2;$r;$g;${b}m";
         }
         else {
-            _warn("invalid color '$color_label': all colors must be between 0 and 255");
+            Data::Printer::Common::_warn("invalid color '$color_label': all colors must be between 0 and 255");
         }
     }
     elsif ($color_label =~ /\A#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})\z/i) {
@@ -106,7 +106,7 @@ sub _parse_color {
             $color_code = "\e[0;38;2;$r;$g;${b}m";
         }
         else {
-            _warn("invalid color '$color_label': all colors must be between 00 and FF");
+            Data::Printer::Common::_warn("invalid color '$color_label': all colors must be between 00 and FF");
         }
     }
     elsif ($color_label =~ /\A\e\[\d+(:?;\d+)*m\z/) {
@@ -145,7 +145,7 @@ sub _parse_color {
                     ;
     }
     else {
-        _warn("unrecognized color '$color_label'");
+        Data::Printer::Common::_warn("unrecognized color '$color_label'");
     }
     return $color_code;
 }

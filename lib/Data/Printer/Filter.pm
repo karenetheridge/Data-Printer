@@ -4,7 +4,7 @@ use warnings;
 use Data::Printer::Common;
 
 require Carp;
-require Data::Printer;
+#require Data::Printer;
 
 my %_filters_for   = ();
 my %_extras_for    = ();

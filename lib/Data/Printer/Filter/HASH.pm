@@ -17,7 +17,6 @@ filter 'HASH' => sub {
     my @src_keys = grep !exists $ignore{$_}, keys %$hash_ref;
     return $ddp->maybe_colorize('{}', 'brackets') unless @src_keys;
     @src_keys = Data::Printer::Common::_nsort(@src_keys) if $ddp->sort_keys;
-    #Scalar::Util::weaken($hash_ref);
 
     my $len = 0;
     my $align_keys = $ddp->multiline && $ddp->align_hash;
@@ -30,8 +29,7 @@ filter 'HASH' => sub {
         next if ref $idx;
         my $raw_key = $src_keys[$idx];
         my $colored_key = Data::Printer::Common::_process_string($ddp, $raw_key, 'hash');
-        my $new_key = $colored_key;
-        $new_key =~ s/(?<![\\])\e.+?m//g; # strip colors
+        my $new_key = Data::Printer::Common::_colorstrip($colored_key);
 
         if ($ddp->quote_keys) {
             my $needs_quote = 1;
@@ -41,19 +39,23 @@ filter 'HASH' => sub {
                 }
             }
             if ($needs_quote) {
+                $new_key     = q(') . $new_key . q(');
                 $colored_key = $ddp->maybe_colorize(q('), 'quotes')
                              . $colored_key
                              . $ddp->maybe_colorize(q('), 'quotes')
                              ;
             }
         }
-        $processed_keys{$idx} = { raw => $raw_key, colored => $colored_key };
+        $processed_keys{$idx} = {
+            raw     => $raw_key,
+            colored => $colored_key,
+            nocolor => $new_key,
+        };
         if ($align_keys) {
             my $l = length $new_key;
             $len = $l if $l > $len;
         }
     }
-
     # second pass, traversing and rendering:
     $ddp->indent;
     my $total_keys = scalar @i; # yes, counting messages so ',' appear in between.
@@ -71,8 +73,11 @@ filter 'HASH' => sub {
         # update 'var' to 'var{key}':
         $ddp->current_name( $ddp->current_name . '{' . $key->{raw} . '}' );
 
+        my $padding = $len - length($key->{nocolor});
+        $padding = 0 if $padding < 0;
         $string .= $ddp->newline
-                . sprintf("%-*s", $len, $key->{colored})
+                . $key->{colored}
+                . (' ' x $padding)
                 . $ddp->maybe_colorize($ddp->hash_separator, 'separator')
                 ;
 

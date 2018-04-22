@@ -2,7 +2,7 @@
 # ^^ taint mode must be on for taint checking.
 use strict;
 use warnings;
-use Test::More tests => 32;
+use Test::More tests => 33;
 use Data::Printer::Object;
 use Scalar::Util;
 
@@ -13,6 +13,7 @@ test_escape_chars();
 test_print_escapes();
 test_max_string();
 test_weak_ref();
+test_readonly();
 
 sub test_weak_ref {
     my $num = 3.14;
@@ -26,12 +27,15 @@ sub test_basic_values {
     my $object = Data::Printer::Object->new( colored => 0 );
 
     # hardcoded values:
-    is $object->parse(\undef)  , 'undef'  , 'hardcoded undef value';
-    is $object->parse(\123)    , '123'    , 'hardcoded integer value';
-    is $object->parse(\0)      , '0'      , 'hardcoded integer value';
-    is $object->parse(\-1)     , '-1'     , 'hardcoded integer value';
-    is $object->parse(\123.456), '123.456', 'hardcoded floating point value';
-    is $object->parse(\'meep!'), '"meep!"', 'hardcoded string value';
+    is $object->parse(\undef)  , 'undef (read-only)'  , 'hardcoded undef value';
+    is $object->parse(\123)    , '123 (read-only)'    , 'hardcoded integer value';
+    is $object->parse(\0)      , '0 (read-only)'      , 'hardcoded integer value';
+    TODO: {
+        local $TODO = '\-1 was not marked read-only by perl';
+        is $object->parse(\-1)     , '-1 (read-only)'     , 'hardcoded integer value';
+    };
+    is $object->parse(\123.456), '123.456 (read-only)', 'hardcoded floating point value';
+    is $object->parse(\'meep!'), '"meep!" (read-only)', 'hardcoded string value';
 
     # variable values:
     my $var;
@@ -119,8 +123,9 @@ sub test_escape_chars {
         'escaping all'
     );
     $object = Data::Printer::Object->new( colored => 0, escape_chars => 'all', unicode_charnames => 1 );
+    $string = "L\x{e9}on";
     is(
-        $object->parse(\"L\x{e9}on"),
+        $object->parse(\$string),
         '"\N{LATIN CAPITAL LETTER L}\N{LATIN SMALL LETTER E WITH ACUTE}\N{LATIN SMALL LETTER O}\N{LATIN SMALL LETTER N}"',
         'escaping all (with unicode_charnames)'
     );
@@ -174,4 +179,11 @@ sub test_max_string {
         string_overflow => '[...__SKIPPED__...]',
     );
     is $ddp->parse(\$string), q("[...49...]"), 'string_max none';
+}
+
+sub test_readonly {
+    my $ddp = Data::Printer::Object->new( colored => 0, show_readonly => 1 );
+    my $foo = 42;
+    &Internals::SvREADONLY( \$foo, 1 );
+    is $ddp->parse(\$foo), '42 (read-only)', 'readonly variables';
 }
